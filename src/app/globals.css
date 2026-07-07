@@ -1,0 +1,117 @@
+@import "tailwindcss";
+
+@theme {
+  --color-gold-300: #FADAC9;
+  --color-gold-400: #E09C76;
+  --color-gold-500: #C27D56;
+  --color-gold-600: #A8653F;
+  --color-gold-700: #8C5130;
+  
+  --color-gold-200: #FDE8D8;
+  
+  /* Next Level Dark Luxury Colors */
+  --color-brand-dark: #07090F; /* Deep Midnight Blue / Black */
+  --color-brand-surface: #0E131F;
+  --color-brand-surface-light: #161D2E;
+  --color-brand-beige: #d4b896;
+  --color-brand-gold: #D4AF37; /* Luminous Metallic Gold */
+  --color-brand-gold-light: #F3E5AB;
+  
+  --font-inter: var(--font-inter), var(--font-sinhala), var(--font-tamil), sans-serif;
+  --font-playfair: var(--font-playfair), var(--font-sinhala), var(--font-tamil), serif;
+  --font-script: var(--font-script), var(--font-sinhala), var(--font-tamil), cursive;
+  
+  /* Map standard theme variables so Tailwind generates bg-background, text-foreground, etc. */
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-primary: var(--primary);
+  
+  /* Aliases for old class names used in components */
+  --color-dark-bg: var(--color-brand-dark);
+  --color-dark-surface: var(--color-brand-surface);
+  --color-light-bg: #EAEAEA;
+  --color-light-surface: #F5F5F5;
+}
+
+:root {
+  --background: var(--color-brand-dark);
+  --foreground: #E0E0E0; /* Light text for readability */
+  --primary: var(--color-brand-gold);
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  background: var(--background);
+  color: var(--foreground);
+  background-attachment: fixed;
+  font-family: var(--font-inter), sans-serif;
+  overflow-x: hidden;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+.glass-panel {
+  background: rgba(14, 19, 31, 0.4); /* Dark surface with transparency */
+  backdrop-filter: blur(24px) saturate(180%);
+  -webkit-backdrop-filter: blur(24px) saturate(180%);
+  border: 1px solid rgba(212, 175, 55, 0.15); /* Brand gold border */
+  box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5), inset 0 1px 0 rgba(255, 255, 255, 0.05);
+  transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-panel:hover {
+  background: rgba(14, 19, 31, 0.6);
+  border-color: rgba(212, 175, 55, 0.3);
+  box-shadow: 0 30px 60px rgba(0, 0, 0, 0.6), 0 0 40px rgba(212, 175, 55, 0.1), inset 0 1px 0 rgba(255, 255, 255, 0.1);
+}
+
+.text-gradient-gold {
+  background: linear-gradient(135deg, #b08968 0%, #c9a96e 50%, #d4b896 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+  padding-bottom: 0.2em;
+  padding-top: 0.2em;
+  padding-left: 0.2em;
+  padding-right: 0.2em;
+  line-height: 1.3;
+}
+
+.bg-gradient-gold {
+  background: linear-gradient(135deg, #d4b896 0%, #c9a96e 50%, #b08968 100%);
+}
+
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+}
+::-webkit-scrollbar-track {
+  background: var(--background);
+}
+::-webkit-scrollbar-thumb {
+  background: var(--primary);
+  border-radius: 10px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #b08968;
+}
+
+/* Animations */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-10px); }
+}
+.animate-float {
+  animation: float 6s ease-in-out infinite;
+}
+
+@keyframes pulse-glow {
+  0%, 100% { box-shadow: 0 0 15px rgba(201, 169, 110, 0.2); }
+  50% { box-shadow: 0 0 30px rgba(201, 169, 110, 0.5); }
+}
+.animate-pulse-glow {
+  animation: pulse-glow 4s ease-in-out infinite;
+}
