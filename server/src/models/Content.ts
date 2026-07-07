@@ -14,5 +14,6 @@ export interface Content {
     events: boolean;
     gallery: boolean;
     rsvpForm: boolean;
+    guestPhotos: boolean;
   };
 }

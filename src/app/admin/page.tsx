@@ -98,7 +98,7 @@ export default function AdminDashboard() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "Royal2026") {
+    if (password === "Game9805@.com") {
       setIsAuthenticated(true);
       setError("");
       fetchGuests();
@@ -1183,6 +1183,24 @@ export default function AdminDashboard() {
             </div>
           </div>
           <p className="text-sm text-gray-400">Toggle whether guests can see the RSVP form on the live site.</p>
+        </div>
+
+        {/* Guest Photos */}
+        <div className="glass-panel p-6 rounded-xl border border-primary/20 shadow-xl space-y-4">
+          <div className="flex items-center justify-between">
+            <h2 className="text-xl font-playfair text-primary flex items-center gap-2"><Camera className="w-5 h-5"/> Guest Photos</h2>
+            <div className="flex items-center gap-3">
+              <span className="text-sm text-gray-300">{editingContent.visibility.guestPhotos !== false ? 'Visible' : 'Hidden'}</span>
+              <button
+                type="button"
+                onClick={() => handleVisibilityToggle('guestPhotos', editingContent.visibility.guestPhotos === false ? true : false)}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${editingContent.visibility.guestPhotos !== false ? 'bg-primary' : 'bg-gray-600'}`}
+              >
+                <span className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform ${editingContent.visibility.guestPhotos !== false ? 'translate-x-6' : 'translate-x-1'}`} />
+              </button>
+            </div>
+          </div>
+          <p className="text-sm text-gray-400">Toggle whether guests can see the Guest Photos section on the live site.</p>
         </div>
 
         {/* Bottom Save Button */}
