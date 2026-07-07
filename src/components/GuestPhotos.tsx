@@ -68,7 +68,7 @@ export default function GuestPhotos() {
 
   const handleLogin = (e: React.FormEvent) => {
     e.preventDefault();
-    if (password === "Game9805@.com") {
+    if (password === "Royal2026") {
       setIsAdmin(true);
       setShowLogin(false);
       setLoginError("");
