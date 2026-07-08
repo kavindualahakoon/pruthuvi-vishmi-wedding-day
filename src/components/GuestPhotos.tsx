@@ -194,21 +194,23 @@ export default function GuestPhotos() {
                   </div>
                 )}
                 
-                <div className="absolute inset-0 bg-gradient-to-t from-black/60 via-transparent to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 flex flex-col justify-end p-4 z-10">
-                  <p className="text-white text-sm font-light mb-2">By {photo.uploaderName}</p>
+                <div className={`absolute inset-0 bg-gradient-to-t from-black/80 via-black/20 to-transparent transition-opacity duration-500 flex flex-col justify-end p-3 sm:p-4 z-10 ${isAdmin ? 'opacity-100' : 'opacity-0 group-hover:opacity-100'}`}>
+                  <p className="text-white text-xs sm:text-sm font-light mb-2">By {photo.uploaderName}</p>
                   
                   {isAdmin && (
-                    <div className="flex flex-wrap gap-2">
-                      {!photo.approved && (
-                        <button onClick={(e) => handleApprovePhoto(photo.id, e)} className="flex-1 py-1.5 bg-green-500/80 text-white hover:bg-green-500 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1">
-                          <Check className="w-3 h-3" /> Approve
+                    <div className="flex flex-col gap-2 mt-1 w-full">
+                      <div className="flex gap-2 w-full">
+                        {!photo.approved && (
+                          <button onClick={(e) => handleApprovePhoto(photo.id, e)} className="flex-1 py-2 sm:py-1.5 bg-green-500 text-white hover:bg-green-600 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1 shadow-sm">
+                            <Check className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Approve</span>
+                          </button>
+                        )}
+                        <button onClick={(e) => handleDeletePhoto(photo.id, e)} className="flex-1 py-2 sm:py-1.5 bg-red-500 text-white hover:bg-red-600 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1 shadow-sm">
+                          <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Delete</span>
                         </button>
-                      )}
-                      <button onClick={(e) => handleDeletePhoto(photo.id, e)} className="flex-1 py-1.5 bg-red-500/80 text-white hover:bg-red-500 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1">
-                        <Trash2 className="w-3 h-3" /> Delete
-                      </button>
-                      <button onClick={(e) => handleDownloadPhoto(photo.url, photo.originalName, e)} className="w-full py-1.5 bg-primary/80 text-dark-bg hover:bg-primary rounded text-xs font-bold uppercase tracking-wider transition-colors flex justify-center items-center gap-1 mt-1">
-                        <Download className="w-3 h-3" /> Download
+                      </div>
+                      <button onClick={(e) => handleDownloadPhoto(photo.url, photo.originalName, e)} className="w-full py-2 sm:py-1.5 bg-primary text-dark-bg hover:bg-gold-300 rounded text-xs font-bold uppercase tracking-wider transition-colors flex justify-center items-center gap-1 shadow-sm">
+                        <Download className="w-3 h-3 sm:w-4 sm:h-4" /> Download
                       </button>
                     </div>
                   )}
