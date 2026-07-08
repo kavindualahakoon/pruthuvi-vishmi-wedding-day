@@ -55,33 +55,37 @@ router.get('/all', async (req, res) => {
 });
 
 // POST upload a new photo (default unapproved)
-router.post('/upload', upload.single('photo'), async (req, res) => {
+router.post('/upload', upload.array('photos', 10), async (req, res) => {
   try {
-    if (!req.file) {
-      return res.status(400).json({ message: 'No file uploaded' });
+    const files = req.files as Express.Multer.File[];
+    if (!files || files.length === 0) {
+      return res.status(400).json({ message: 'No files uploaded' });
     }
     
     const uploaderName = req.body.uploaderName || 'Anonymous';
-    const photoUrl = `/uploads/${req.file.filename}`;
-    
     const photos = await readData<GuestPhoto[]>(PHOTOS_FILE, []);
+    const newPhotos: GuestPhoto[] = [];
     
-    const newPhoto: GuestPhoto = {
-      id: crypto.randomUUID(),
-      url: photoUrl,
-      originalName: req.file.originalname,
-      uploaderName,
-      approved: false,
-      createdAt: new Date().toISOString()
-    };
+    for (const file of files) {
+      const photoUrl = `/uploads/${file.filename}`;
+      const newPhoto: GuestPhoto = {
+        id: crypto.randomUUID(),
+        url: photoUrl,
+        originalName: file.originalname,
+        uploaderName,
+        approved: false,
+        createdAt: new Date().toISOString()
+      };
+      photos.push(newPhoto);
+      newPhotos.push(newPhoto);
+    }
     
-    photos.push(newPhoto);
     await writeData(PHOTOS_FILE, photos);
     
-    res.status(201).json({ message: 'Photo uploaded successfully', photo: newPhoto });
+    res.status(201).json({ message: 'Photos uploaded successfully', photos: newPhotos });
   } catch (error: any) {
     console.error("Upload error:", error);
-    res.status(500).json({ message: 'Error uploading photo', error: error.message || error });
+    res.status(500).json({ message: 'Error uploading photos', error: error.message || error });
   }
 });
 

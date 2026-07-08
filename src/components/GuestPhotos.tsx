@@ -43,11 +43,13 @@ export default function GuestPhotos() {
   }, [isAdmin]);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
     const formData = new FormData();
-    formData.append('photo', file);
+    for (let i = 0; i < files.length; i++) {
+      formData.append('photos', files[i]);
+    }
     formData.append('uploaderName', uploaderName || 'Anonymous');
 
     setIsUploading(true);
@@ -59,8 +61,8 @@ export default function GuestPhotos() {
       if (fileInputRef.current) fileInputRef.current.value = '';
       setTimeout(() => setUploadSuccess(false), 5000);
     } catch (err) {
-      console.error("Failed to upload photo", err);
-      alert("Failed to upload photo. Please try again.");
+      console.error("Failed to upload photos", err);
+      alert("Failed to upload photos. Please try again.");
     } finally {
       setIsUploading(false);
     }
@@ -150,6 +152,7 @@ export default function GuestPhotos() {
               <input 
                 type="file" 
                 accept="image/*" 
+                multiple
                 ref={fileInputRef} 
                 className="hidden" 
                 onChange={handleUpload} 
@@ -160,11 +163,11 @@ export default function GuestPhotos() {
                 disabled={isUploading}
                 className="w-full px-6 py-3 bg-primary text-dark-bg hover:bg-gold-300 transition-all rounded-lg font-bold tracking-widest uppercase text-sm flex items-center justify-center gap-2"
               >
-                {isUploading ? "Uploading..." : <><ImageIcon className="w-4 h-4" /> Choose Photo</>}
+                {isUploading ? "Uploading..." : <><ImageIcon className="w-4 h-4" /> Choose Photos</>}
               </button>
               
               {uploadSuccess && (
-                <p className="text-green-400 text-sm mt-2">Photo uploaded successfully! It will appear here once approved.</p>
+                <p className="text-green-400 text-sm mt-2">Photos uploaded successfully! They will appear here once approved.</p>
               )}
             </div>
           </div>
