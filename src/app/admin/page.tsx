@@ -4,6 +4,9 @@
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { Lock, Users, FileText, Download, Utensils, CalendarDays, Search, Edit2, Trash2, X, Save, Video, Type, CheckSquare, ZoomIn, Clock, Volume2, Camera } from "lucide-react";
+import { db, storage } from "@/lib/firebase";
+import { collection, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { useContent } from "@/context/ContentContext";
 
 interface Guest {
@@ -67,7 +70,8 @@ export default function AdminDashboard() {
       preShoot: { en: defaultPreShoot, si: defaultPreShoot, ta: defaultPreShoot },
       weddingEvents: { en: defaultWeddingEvents, si: defaultWeddingEvents, ta: defaultWeddingEvents },
       gallery: [],
-      weddingCard: { imageUrl: "" }
+      weddingCard: { imageUrl: "" },
+      visibility: {}
     };
 
     if (content && !editingContent) {
@@ -81,6 +85,7 @@ export default function AdminDashboard() {
       if (!safeContent.weddingEvents) safeContent.weddingEvents = {};
       if (!safeContent.gallery) safeContent.gallery = [];
       if (!safeContent.weddingCard) safeContent.weddingCard = { imageUrl: "" };
+      if (!safeContent.visibility) safeContent.visibility = {};
 
       langs.forEach(l => {
         if (!safeContent.hero[l]) safeContent.hero[l] = defaultHero;
@@ -111,8 +116,12 @@ export default function AdminDashboard() {
   const fetchGuests = async () => {
     setLoadingGuests(true);
     try {
-      const res = await axios.get("/api/rsvp");
-      setGuests(res.data);
+      const querySnapshot = await getDocs(collection(db, "rsvps"));
+      const rsvps: Guest[] = [];
+      querySnapshot.forEach((doc) => {
+        rsvps.push({ id: doc.id, ...doc.data() } as Guest);
+      });
+      setGuests(rsvps);
     } catch (err) {
       console.error("Failed to fetch RSVPs", err);
     } finally {
@@ -123,8 +132,12 @@ export default function AdminDashboard() {
   const fetchGuestPhotos = async () => {
     setLoadingPhotos(true);
     try {
-      const res = await axios.get("/api/guest-photos/all");
-      setGuestPhotos(res.data);
+      const querySnapshot = await getDocs(collection(db, "guestPhotos"));
+      const fetchedPhotos: any[] = [];
+      querySnapshot.forEach((doc) => {
+        fetchedPhotos.push({ id: doc.id, ...doc.data() });
+      });
+      setGuestPhotos(fetchedPhotos);
     } catch (err) {
       console.error("Failed to fetch guest photos", err);
     } finally {
@@ -134,17 +147,23 @@ export default function AdminDashboard() {
 
   const handleApprovePhoto = async (id: string) => {
     try {
-      await axios.put(`/api/guest-photos/${id}/approve`);
+      await updateDoc(doc(db, "guestPhotos", id), { approved: true });
       setGuestPhotos(guestPhotos.map(p => p.id === id ? { ...p, approved: true } : p));
     } catch (err) {
       console.error("Failed to approve photo", err);
     }
   };
 
-  const handleDeletePhoto = async (id: string) => {
+  const handleDeletePhoto = async (id: string, url: string) => {
     if (window.confirm("Are you sure you want to delete this photo?")) {
       try {
-        await axios.delete(`/api/guest-photos/${id}`);
+        await deleteDoc(doc(db, "guestPhotos", id));
+        try {
+          const fileRef = ref(storage, url);
+          await deleteObject(fileRef);
+        } catch (storageErr) {
+          console.error("Failed to delete from storage", storageErr);
+        }
         setGuestPhotos(guestPhotos.filter(p => p.id !== id));
       } catch (err) {
         console.error("Failed to delete photo", err);
@@ -164,7 +183,7 @@ export default function AdminDashboard() {
   const handleGuestDelete = async (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to completely remove ${name} from the guest list?`)) {
       try {
-        await axios.delete(`/api/rsvp/${id}`);
+        await deleteDoc(doc(db, "rsvps", id));
         setGuests(guests.filter(g => g.id !== id));
       } catch (err) {
         console.error("Failed to delete guest", err);
@@ -177,8 +196,8 @@ export default function AdminDashboard() {
     if (!editingGuest) return;
     setIsSavingGuest(true);
     try {
-      const res = await axios.put(`/api/rsvp/${editingGuest.id}`, editingGuest);
-      setGuests(guests.map(g => g.id === editingGuest.id ? res.data.guest : g));
+      await updateDoc(doc(db, "rsvps", editingGuest.id), { ...editingGuest });
+      setGuests(guests.map(g => g.id === editingGuest.id ? editingGuest : g));
       setEditingGuest(null);
     } catch (err) {
       console.error("Failed to update guest", err);
@@ -190,7 +209,6 @@ export default function AdminDashboard() {
   const handleVisibilityToggle = async (key: keyof typeof editingContent.visibility, checked: boolean) => {
     if (!editingContent) return;
     
-    // Update local state immediately for snappy UI
     const newEditingContent = {
       ...editingContent,
       visibility: {
@@ -200,11 +218,10 @@ export default function AdminDashboard() {
     };
     
     setEditingContent(newEditingContent);
-    setContent(newEditingContent); // Sync to context immediately
+    setContent(newEditingContent); 
 
-    // Save to DB silently
     try {
-      await axios.put('/api/content', newEditingContent);
+      await setDoc(doc(db, "settings", "content"), newEditingContent);
     } catch (err) {
       console.error("Failed to save visibility toggle", err);
     }
@@ -212,16 +229,15 @@ export default function AdminDashboard() {
 
   const handleContentUpdate = async () => {
     setIsSavingContent(true);
-    // Directly update the local context state so the UI reflects changes immediately, even if backend fails
     if (editingContent) {
       setContent(editingContent);
     }
     
     try {
-      await axios.put('/api/content', editingContent);
+      await setDoc(doc(db, "settings", "content"), editingContent);
       alert("Content saved successfully to database!");
     } catch (err) {
-      console.warn("Backend save failed (MongoDB might be offline), but local preview is updated.", err);
+      console.warn("Backend save failed.", err);
       alert("Content saved locally for preview! (Database connection failed)");
     } finally {
       setIsSavingContent(false);
@@ -232,16 +248,16 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('video', file);
-
     setUploadingVideo(true);
     try {
-      const res = await axios.post('/api/content/upload-video', formData);
+      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
+      await uploadBytesResumable(fileRef, file);
+      const videoUrl = await getDownloadURL(fileRef);
+
       const newPreShoot = { ...editingContent.preShoot };
       ["en", "si", "ta"].forEach(l => {
         if (newPreShoot[l]) {
-          newPreShoot[l] = { ...newPreShoot[l], videoUrl: res.data.videoUrl };
+          newPreShoot[l] = { ...newPreShoot[l], videoUrl };
         }
       });
 
@@ -254,7 +270,7 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await axios.put('/api/content', newEditingContent);
+        await setDoc(doc(db, "settings", "content"), newEditingContent);
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -272,16 +288,15 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     setUploadingImage(true);
     try {
-      const res = await axios.post('/api/content/upload-image', formData);
+      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
+      await uploadBytesResumable(fileRef, file);
+      const imageUrl = await getDownloadURL(fileRef);
       
       const newPhoto = {
         id: Date.now().toString(),
-        src: res.data.imageUrl,
+        src: imageUrl,
         alt: "Gallery Photo",
         height: ["h-64", "h-80", "h-96"][Math.floor(Math.random() * 3)],
         visible: true
@@ -297,7 +312,7 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await axios.put('/api/content', newEditingContent);
+        await setDoc(doc(db, "settings", "content"), newEditingContent);
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -315,17 +330,16 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     setUploadingHeroImage(true);
     try {
-      const res = await axios.post('/api/content/upload-image', formData);
+      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
+      await uploadBytesResumable(fileRef, file);
+      const imageUrl = await getDownloadURL(fileRef);
       
       const newHero = { ...editingContent.hero };
       ["en", "si", "ta"].forEach(l => {
         if (newHero[l]) {
-          newHero[l] = { ...newHero[l], bgUrl: res.data.imageUrl };
+          newHero[l] = { ...newHero[l], bgUrl: imageUrl };
         }
       });
 
@@ -337,9 +351,8 @@ export default function AdminDashboard() {
       setEditingContent(newEditingContent);
       setContent(newEditingContent);
       
-      // Save silently
       try {
-        await axios.put('/api/content', newEditingContent);
+        await setDoc(doc(db, "settings", "content"), newEditingContent);
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -357,17 +370,16 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('audio', file);
-
     setUploadingAudio(true);
     try {
-      const res = await axios.post('/api/content/upload-audio', formData);
+      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
+      await uploadBytesResumable(fileRef, file);
+      const audioUrl = await getDownloadURL(fileRef);
       
       const newHero = { ...editingContent.hero };
       ["en", "si", "ta"].forEach(l => {
         if (newHero[l]) {
-          newHero[l] = { ...newHero[l], audioUrl: res.data.audioUrl };
+          newHero[l] = { ...newHero[l], audioUrl };
         }
       });
 
@@ -380,7 +392,7 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await axios.put('/api/content', newEditingContent);
+        await setDoc(doc(db, "settings", "content"), newEditingContent);
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -398,23 +410,22 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     setUploadingCardImage(true);
     try {
-      const res = await axios.post('/api/content/upload-image', formData);
+      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
+      await uploadBytesResumable(fileRef, file);
+      const imageUrl = await getDownloadURL(fileRef);
       
       const newEditingContent = {
         ...editingContent,
-        weddingCard: { imageUrl: res.data.imageUrl }
+        weddingCard: { imageUrl }
       };
       
       setEditingContent(newEditingContent);
       setContent(newEditingContent);
       
       try {
-        await axios.put('/api/content', newEditingContent);
+        await setDoc(doc(db, "settings", "content"), newEditingContent);
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -432,23 +443,22 @@ export default function AdminDashboard() {
     const file = e.target.files?.[0];
     if (!file) return;
 
-    const formData = new FormData();
-    formData.append('image', file);
-
     setUploadingFavicon(true);
     try {
-      const res = await axios.post('/api/content/upload-image', formData);
+      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
+      await uploadBytesResumable(fileRef, file);
+      const imageUrl = await getDownloadURL(fileRef);
       
       const newEditingContent = {
         ...editingContent,
-        faviconUrl: res.data.imageUrl
+        faviconUrl: imageUrl
       };
       
       setEditingContent(newEditingContent);
       setContent(newEditingContent);
       
       try {
-        await axios.put('/api/content', newEditingContent);
+        await setDoc(doc(db, "settings", "content"), newEditingContent);
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -634,7 +644,7 @@ export default function AdminDashboard() {
                         Approve
                       </button>
                     )}
-                    <button onClick={() => handleDeletePhoto(photo.id)} className="flex-1 py-2 bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 rounded text-xs font-bold uppercase tracking-wider transition-colors">
+                    <button onClick={() => handleDeletePhoto(photo.id, photo.url)} className="flex-1 py-2 bg-red-500/20 text-red-400 border border-red-500/50 hover:bg-red-500/30 rounded text-xs font-bold uppercase tracking-wider transition-colors">
                       Delete
                     </button>
                     <button onClick={() => handleDownloadPhoto(photo.url, photo.originalName)} className="w-full py-2 bg-primary/20 text-primary border border-primary/50 hover:bg-primary/30 rounded text-xs font-bold uppercase tracking-wider transition-colors flex justify-center items-center gap-1">

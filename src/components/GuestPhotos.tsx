@@ -4,6 +4,9 @@ import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { X, ZoomIn, Upload, Image as ImageIcon, Lock, Check, Trash2, Download } from "lucide-react";
+import { db, storage } from "@/lib/firebase";
+import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy } from "firebase/firestore";
+import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { useContent } from "@/context/ContentContext";
 
 interface GuestPhoto {
@@ -30,9 +33,16 @@ export default function GuestPhotos() {
 
   const fetchPhotos = async () => {
     try {
-      const endpoint = isAdmin ? '/api/guest-photos/all' : '/api/guest-photos/approved';
-      const res = await axios.get(endpoint);
-      setPhotos(res.data);
+      const q = isAdmin 
+        ? query(collection(db, "guestPhotos"), orderBy("createdAt", "desc"))
+        : query(collection(db, "guestPhotos"), where("approved", "==", true), orderBy("createdAt", "desc"));
+      
+      const querySnapshot = await getDocs(q);
+      const fetchedPhotos: GuestPhoto[] = [];
+      querySnapshot.forEach((docSnap) => {
+        fetchedPhotos.push({ id: docSnap.id, ...docSnap.data() } as GuestPhoto);
+      });
+      setPhotos(fetchedPhotos);
     } catch (err) {
       console.error("Failed to fetch guest photos", err);
     }
@@ -46,20 +56,31 @@ export default function GuestPhotos() {
     const files = e.target.files;
     if (!files || files.length === 0) return;
 
-    const formData = new FormData();
-    for (let i = 0; i < files.length; i++) {
-      formData.append('photos', files[i]);
-    }
-    formData.append('uploaderName', uploaderName || 'Anonymous');
-
     setIsUploading(true);
     setUploadSuccess(false);
 
     try {
-      await axios.post('/api/guest-photos/upload', formData);
+      const uploadPromises = Array.from(files).map(async (file) => {
+        const fileRef = ref(storage, `guest-photos/${Date.now()}-${file.name}`);
+        const uploadTask = await uploadBytesResumable(fileRef, file);
+        const url = await getDownloadURL(fileRef);
+        
+        await addDoc(collection(db, "guestPhotos"), {
+          url,
+          originalName: file.name,
+          uploaderName: uploaderName || 'Anonymous',
+          approved: false,
+          createdAt: new Date().toISOString()
+        });
+      });
+
+      await Promise.all(uploadPromises);
+      
       setUploadSuccess(true);
       if (fileInputRef.current) fileInputRef.current.value = '';
       setTimeout(() => setUploadSuccess(false), 5000);
+      
+      if (isAdmin) fetchPhotos();
     } catch (err) {
       console.error("Failed to upload photos", err);
       alert("Failed to upload photos. Please try again.");
@@ -83,18 +104,24 @@ export default function GuestPhotos() {
   const handleApprovePhoto = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await axios.put(`/api/guest-photos/${id}/approve`);
+      await updateDoc(doc(db, "guestPhotos", id), { approved: true });
       setPhotos(photos.map(p => p.id === id ? { ...p, approved: true } : p));
     } catch (err) {
       console.error("Failed to approve photo", err);
     }
   };
 
-  const handleDeletePhoto = async (id: string, e: React.MouseEvent) => {
+  const handleDeletePhoto = async (id: string, url: string, e: React.MouseEvent) => {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this photo?")) {
       try {
-        await axios.delete(`/api/guest-photos/${id}`);
+        await deleteDoc(doc(db, "guestPhotos", id));
+        try {
+          const fileRef = ref(storage, url);
+          await deleteObject(fileRef);
+        } catch (storageErr) {
+          console.error("Failed to delete from storage", storageErr);
+        }
         setPhotos(photos.filter(p => p.id !== id));
       } catch (err) {
         console.error("Failed to delete photo", err);
@@ -205,7 +232,7 @@ export default function GuestPhotos() {
                             <Check className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Approve</span>
                           </button>
                         )}
-                        <button onClick={(e) => handleDeletePhoto(photo.id, e)} className="flex-1 py-2 sm:py-1.5 bg-red-500 text-white hover:bg-red-600 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1 shadow-sm">
+                        <button onClick={(e) => handleDeletePhoto(photo.id, photo.url, e)} className="flex-1 py-2 sm:py-1.5 bg-red-500 text-white hover:bg-red-600 rounded text-xs font-bold uppercase tracking-wider transition-colors flex items-center justify-center gap-1 shadow-sm">
                           <Trash2 className="w-3 h-3 sm:w-4 sm:h-4" /> <span className="hidden sm:inline">Delete</span>
                         </button>
                       </div>

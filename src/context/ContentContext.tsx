@@ -2,7 +2,8 @@
 "use client";
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import axios from 'axios';
+import { db } from '@/lib/firebase';
+import { doc, getDoc, onSnapshot, setDoc } from 'firebase/firestore';
 
 interface ContentData {
   [key: string]: any;
@@ -28,9 +29,15 @@ export const ContentProvider = ({ children }: { children: React.ReactNode }) => 
 
   const fetchContent = async () => {
     try {
-      // Append timestamp to prevent browser from caching the polling requests
-      const res = await axios.get(`/api/content?t=${new Date().getTime()}`);
-      setContent(res.data);
+      const docRef = doc(db, "settings", "content");
+      const docSnap = await getDoc(docRef);
+      if (docSnap.exists()) {
+        setContent(docSnap.data());
+      } else {
+        // Initialize if not exists
+        await setDoc(docRef, {});
+        setContent({});
+      }
     } catch (err) {
       console.error("Failed to fetch content", err);
     } finally {
@@ -39,9 +46,13 @@ export const ContentProvider = ({ children }: { children: React.ReactNode }) => 
   };
 
   useEffect(() => {
-    fetchContent();
-    const interval = setInterval(fetchContent, 5000); // Poll every 5 seconds
-    return () => clearInterval(interval);
+    const unsub = onSnapshot(doc(db, "settings", "content"), (docSnap) => {
+      if (docSnap.exists()) {
+        setContent(docSnap.data());
+      }
+      setLoading(false);
+    });
+    return () => unsub();
   }, []);
 
   useEffect(() => {

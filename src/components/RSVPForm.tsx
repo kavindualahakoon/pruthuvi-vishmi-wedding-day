@@ -3,6 +3,8 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
+import { db } from "@/lib/firebase";
+import { collection, addDoc } from "firebase/firestore";
 export default function RSVPForm() {
   const [formData, setFormData] = useState({
     name: "",
@@ -23,8 +25,10 @@ export default function RSVPForm() {
     setStatus("loading");
     
     try {
-      // Assuming server runs on 5000 and client on 3000
-      await axios.post("/api/rsvp", formData);
+      await addDoc(collection(db, "rsvps"), {
+        ...formData,
+        createdAt: new Date().toISOString()
+      });
       setStatus("success");
       setFormData({
         name: "",
