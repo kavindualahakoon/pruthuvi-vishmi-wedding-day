@@ -354,9 +354,9 @@ export default function AdminDashboard() {
       }
       
       alert("Image uploaded and added to gallery!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed", err);
-      alert("Failed to upload image");
+      alert(`Failed to upload image: ${err.message || err}`);
     } finally {
       setUploadingImage(false);
     }
@@ -396,9 +396,9 @@ export default function AdminDashboard() {
       }
       
       alert("Hero Background uploaded successfully!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed", err);
-      alert("Failed to upload image");
+      alert(`Failed to upload image: ${err.message || err}`);
     } finally {
       setUploadingHeroImage(false);
     }
@@ -438,9 +438,9 @@ export default function AdminDashboard() {
       }
       
       alert("Background Audio uploaded successfully!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed", err);
-      alert("Failed to upload audio");
+      alert(`Failed to upload audio: ${err.message || err}`);
     } finally {
       setUploadingAudio(false);
     }
@@ -473,9 +473,9 @@ export default function AdminDashboard() {
       }
       
       alert("Wedding Card uploaded successfully!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed", err);
-      alert("Failed to upload image");
+      alert(`Failed to upload image: ${err.message || err}`);
     } finally {
       setUploadingCardImage(false);
     }
@@ -508,9 +508,9 @@ export default function AdminDashboard() {
       }
       
       alert("Favicon uploaded successfully!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed", err);
-      alert("Failed to upload favicon");
+      alert(`Failed to upload favicon: ${err.message || err}`);
     } finally {
       setUploadingFavicon(false);
     }
