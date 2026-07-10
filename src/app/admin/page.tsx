@@ -128,10 +128,17 @@ export default function AdminDashboard() {
     setLoadingGuests(true);
     try {
       const res = await fetch('/api/rsvps');
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const rsvps = await res.json();
-      setGuests(rsvps);
+      if (Array.isArray(rsvps)) {
+        setGuests(rsvps);
+      } else {
+        console.error("Fetched RSVPs is not an array:", rsvps);
+        setGuests([]);
+      }
     } catch (err) {
       console.error("Failed to fetch RSVPs", err);
+      setGuests([]);
     } finally {
       setLoadingGuests(false);
     }
@@ -141,10 +148,17 @@ export default function AdminDashboard() {
     setLoadingPhotos(true);
     try {
       const res = await fetch('/api/photos');
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const fetchedPhotos = await res.json();
-      setGuestPhotos(fetchedPhotos);
+      if (Array.isArray(fetchedPhotos)) {
+        setGuestPhotos(fetchedPhotos);
+      } else {
+        console.error("Fetched guest photos is not an array:", fetchedPhotos);
+        setGuestPhotos([]);
+      }
     } catch (err) {
       console.error("Failed to fetch guest photos", err);
+      setGuestPhotos([]);
     } finally {
       setLoadingPhotos(false);
     }

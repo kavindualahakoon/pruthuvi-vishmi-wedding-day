@@ -30,10 +30,17 @@ export default function GuestPhotos() {
   const fetchPhotos = async () => {
     try {
       const res = await fetch('/api/photos');
+      if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const data = await res.json();
-      setPhotos(data);
+      if (Array.isArray(data)) {
+        setPhotos(data);
+      } else {
+        console.error("Fetched photos is not an array:", data);
+        setPhotos([]);
+      }
     } catch (error) {
       console.error("Error fetching photos", error);
+      setPhotos([]);
     }
   };
 
@@ -144,7 +151,7 @@ export default function GuestPhotos() {
     return null;
   }
 
-  const visiblePhotos = photos.filter(p => isAdmin || p.approved);
+  const visiblePhotos = Array.isArray(photos) ? photos.filter(p => isAdmin || p.approved) : [];
 
   return (
     <section className="pt-20 pb-10 md:pt-32 md:pb-16 bg-dark-bg text-foreground relative overflow-hidden" id="guest-photos">
