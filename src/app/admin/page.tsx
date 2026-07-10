@@ -52,7 +52,10 @@ export default function AdminDashboard() {
       method: 'POST',
       body: formData,
     });
-    if (!uploadRes.ok) throw new Error("Failed to upload file");
+    if (!uploadRes.ok) {
+      const errData = await uploadRes.json().catch(() => ({}));
+      throw new Error(errData.error || `Server returned status ${uploadRes.status}`);
+    }
     const data = await uploadRes.json();
     return data.url;
   };

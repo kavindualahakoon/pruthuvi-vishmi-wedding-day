@@ -70,7 +70,10 @@ export default function GuestPhotos() {
           body: formData,
         });
         
-        if (!uploadRes.ok) throw new Error("Failed to upload file");
+        if (!uploadRes.ok) {
+          const errData = await uploadRes.json().catch(() => ({}));
+          throw new Error(errData.error || `Server returned status ${uploadRes.status}`);
+        }
         const resData = await uploadRes.json();
         const downloadUrl = resData.url;
         
