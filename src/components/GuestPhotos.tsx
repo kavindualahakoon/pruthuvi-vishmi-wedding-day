@@ -5,6 +5,8 @@ import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { X, ZoomIn, Upload, Image as ImageIcon, Lock, Check, Trash2, Download } from "lucide-react";
 import { useContent } from "@/context/ContentContext";
+import { storage } from "@/lib/firebase-backup";
+import { ref, uploadBytesResumable, getDownloadURL } from "firebase/storage";
 interface GuestPhoto {
   id: string;
   url: string;
@@ -62,16 +64,27 @@ export default function GuestPhotos() {
           throw new Error("Only photos are allowed.");
         }
 
-        const formData = new FormData();
-        formData.append('file', file);
-        
-        const uploadRes = await fetch('/api/upload', {
-          method: 'POST',
-          body: formData,
-        });
-        
-        if (!uploadRes.ok) throw new Error("Failed to upload file");
-        const { url: downloadUrl } = await uploadRes.json();
+        let downloadUrl = "";
+
+        if (storage) {
+          // Upload directly to Firebase Storage on the client side (bypasses Vercel serverless disk limit)
+          const fileRef = ref(storage, `guest-photos/${Date.now()}-${file.name}`);
+          await uploadBytesResumable(fileRef, file);
+          downloadUrl = await getDownloadURL(fileRef);
+        } else {
+          // Fallback to local serverless upload endpoint (e.g. for local testing without Firebase envs)
+          const formData = new FormData();
+          formData.append('file', file);
+          
+          const uploadRes = await fetch('/api/upload', {
+            method: 'POST',
+            body: formData,
+          });
+          
+          if (!uploadRes.ok) throw new Error("Failed to upload file");
+          const resData = await uploadRes.json();
+          downloadUrl = resData.url;
+        }
         
         await fetch('/api/photos', {
           method: 'POST',
