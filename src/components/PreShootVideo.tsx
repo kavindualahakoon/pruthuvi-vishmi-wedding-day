@@ -71,7 +71,10 @@ export default function PreShootVideo() {
                   className="absolute inset-0 w-full h-full object-cover opacity-90 group-hover:opacity-100 transition-opacity duration-700 pointer-events-none"
                 />
               ) : (
-                <div className="absolute inset-0 flex flex-col items-center justify-center text-primary/40 gap-4 bg-[url('https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=2069&auto=format&fit=crop')] bg-cover bg-center">
+                <div 
+                  style={{ backgroundImage: "url('https://images.unsplash.com/photo-1511285560929-80b456fea0bc?q=80&w=2069&auto=format&fit=crop')" }}
+                  className="absolute inset-0 flex flex-col items-center justify-center text-primary/40 gap-4 bg-cover bg-center"
+                >
                   <div className="absolute inset-0 bg-brand-dark/80 backdrop-blur-sm"></div>
                   <svg xmlns="http://www.w3.org/2000/svg" width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1" strokeLinecap="round" strokeLinejoin="round" className="relative z-10"><path d="m16 13 5.223 3.482a.5.5 0 0 0 .777-.416V7.87a.5.5 0 0 0-.752-.432L16 10.5"/><rect x="2" y="6" width="14" height="12" rx="2"/></svg>
                   <span className="text-sm tracking-[0.4em] uppercase font-semibold relative z-10">Video coming soon</span>

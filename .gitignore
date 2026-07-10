@@ -35,6 +35,7 @@ yarn-error.log*
 
 # vercel
 .vercel
+.firebase/
 
 # typescript
 *.tsbuildinfo
@@ -49,3 +50,11 @@ server/dist/
 # uploads
 public/uploads/
 public/audio/
+
+# database files
+*.db
+
+# scratch and refactor scripts
+refactor_admin.js
+refactor_admin.py
+test-storage-options.mjs

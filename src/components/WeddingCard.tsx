@@ -52,7 +52,10 @@ export default function WeddingCard() {
                   className="absolute inset-0 w-full h-full object-cover transition-transform duration-[2s] group-hover:scale-105"
                 />
               ) : (
-                <div className="flex flex-col items-center justify-center text-primary/40 gap-6 p-8 text-center bg-[url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=2070&auto=format&fit=crop')] bg-cover bg-center">
+                <div 
+                  style={{ backgroundImage: "url('https://images.unsplash.com/photo-1519225421980-715cb0215aed?q=80&w=2070&auto=format&fit=crop')" }}
+                  className="flex flex-col items-center justify-center text-primary/40 gap-6 p-8 text-center bg-cover bg-center"
+                >
                   <div className="absolute inset-0 bg-brand-dark/85 backdrop-blur-sm"></div>
                   <div className="w-16 h-16 border border-primary/50 rounded-full flex items-center justify-center relative z-10 mb-2">
                     <ImageIcon className="w-6 h-6" />

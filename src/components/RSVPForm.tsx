@@ -3,8 +3,7 @@
 import { useState } from "react";
 import { motion } from "framer-motion";
 import axios from "axios";
-import { db } from "@/lib/firebase";
-import { collection, addDoc } from "firebase/firestore";
+
 export default function RSVPForm() {
   const [formData, setFormData] = useState({
     name: "",
@@ -25,9 +24,18 @@ export default function RSVPForm() {
     setStatus("loading");
     
     try {
-      await addDoc(collection(db, "rsvps"), {
-        ...formData,
-        createdAt: new Date().toISOString()
+      await fetch('/api/rsvps', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          phone: formData.phone,
+          attending: true,
+          guests: formData.guestCount,
+          dietary: formData.foodPreference,
+          message: formData.specialNotes
+        })
       });
       setStatus("success");
       setFormData({

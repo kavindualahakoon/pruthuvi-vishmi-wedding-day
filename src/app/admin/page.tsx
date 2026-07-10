@@ -3,11 +3,10 @@
 
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
-import { Lock, Users, FileText, Download, Utensils, CalendarDays, Search, Edit2, Trash2, X, Save, Video, Type, CheckSquare, ZoomIn, Clock, Volume2, Camera } from "lucide-react";
-import { db, storage } from "@/lib/firebase";
-import { collection, getDocs, doc, updateDoc, deleteDoc, setDoc } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
+import { Lock, Users, FileText, Download, Utensils, CalendarDays, Search, Edit2, Trash2, X, Save, Video, Type, CheckSquare, ZoomIn, Clock, Volume2, Camera, Upload } from "lucide-react";
 import { useContent } from "@/context/ContentContext";
+import { doc, setDoc } from "firebase/firestore";
+import { db } from "@/lib/firebase-backup";
 
 interface Guest {
   id: string;
@@ -45,6 +44,18 @@ export default function AdminDashboard() {
   const [isSavingContent, setIsSavingContent] = useState(false);
   const [uploadingVideo, setUploadingVideo] = useState(false);
   const [uploadingImage, setUploadingImage] = useState(false);
+
+  const proxyUpload = async (file: File, pathPrefix: string): Promise<string> => {
+    const formData = new FormData();
+    formData.append('file', file);
+    const uploadRes = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
+    if (!uploadRes.ok) throw new Error("Failed to upload file");
+    const data = await uploadRes.json();
+    return data.url;
+  };
   const [uploadingHeroImage, setUploadingHeroImage] = useState(false);
   const [uploadingCardImage, setUploadingCardImage] = useState(false);
   const [uploadingAudio, setUploadingAudio] = useState(false);
@@ -116,11 +127,8 @@ export default function AdminDashboard() {
   const fetchGuests = async () => {
     setLoadingGuests(true);
     try {
-      const querySnapshot = await getDocs(collection(db, "rsvps"));
-      const rsvps: Guest[] = [];
-      querySnapshot.forEach((doc) => {
-        rsvps.push({ id: doc.id, ...doc.data() } as Guest);
-      });
+      const res = await fetch('/api/rsvps');
+      const rsvps = await res.json();
       setGuests(rsvps);
     } catch (err) {
       console.error("Failed to fetch RSVPs", err);
@@ -132,11 +140,8 @@ export default function AdminDashboard() {
   const fetchGuestPhotos = async () => {
     setLoadingPhotos(true);
     try {
-      const querySnapshot = await getDocs(collection(db, "guestPhotos"));
-      const fetchedPhotos: any[] = [];
-      querySnapshot.forEach((doc) => {
-        fetchedPhotos.push({ id: doc.id, ...doc.data() });
-      });
+      const res = await fetch('/api/photos');
+      const fetchedPhotos = await res.json();
       setGuestPhotos(fetchedPhotos);
     } catch (err) {
       console.error("Failed to fetch guest photos", err);
@@ -147,26 +152,24 @@ export default function AdminDashboard() {
 
   const handleApprovePhoto = async (id: string) => {
     try {
-      await updateDoc(doc(db, "guestPhotos", id), { approved: true });
-      setGuestPhotos(guestPhotos.map(p => p.id === id ? { ...p, approved: true } : p));
+      await fetch(`/api/photos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: true })
+      });
+      fetchGuestPhotos();
     } catch (err) {
-      console.error("Failed to approve photo", err);
+      console.error("Error approving photo", err);
     }
   };
 
   const handleDeletePhoto = async (id: string, url: string) => {
-    if (window.confirm("Are you sure you want to delete this photo?")) {
+    if (confirm("Are you sure you want to delete this photo?")) {
       try {
-        await deleteDoc(doc(db, "guestPhotos", id));
-        try {
-          const fileRef = ref(storage, url);
-          await deleteObject(fileRef);
-        } catch (storageErr) {
-          console.error("Failed to delete from storage", storageErr);
-        }
-        setGuestPhotos(guestPhotos.filter(p => p.id !== id));
+        await fetch(`/api/photos/${id}`, { method: 'DELETE' });
+        fetchGuestPhotos();
       } catch (err) {
-        console.error("Failed to delete photo", err);
+        console.error("Error deleting photo", err);
       }
     }
   };
@@ -183,7 +186,7 @@ export default function AdminDashboard() {
   const handleGuestDelete = async (id: string, name: string) => {
     if (window.confirm(`Are you sure you want to completely remove ${name} from the guest list?`)) {
       try {
-        await deleteDoc(doc(db, "rsvps", id));
+        await fetch(`/api/rsvps/${id}`, { method: 'DELETE' });
         setGuests(guests.filter(g => g.id !== id));
       } catch (err) {
         console.error("Failed to delete guest", err);
@@ -196,7 +199,11 @@ export default function AdminDashboard() {
     if (!editingGuest) return;
     setIsSavingGuest(true);
     try {
-      await updateDoc(doc(db, "rsvps", editingGuest.id), { ...editingGuest });
+      await fetch(`/api/rsvps/${editingGuest.id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingGuest)
+      });
       setGuests(guests.map(g => g.id === editingGuest.id ? editingGuest : g));
       setEditingGuest(null);
     } catch (err) {
@@ -221,7 +228,11 @@ export default function AdminDashboard() {
     setContent(newEditingContent); 
 
     try {
-      await setDoc(doc(db, "settings", "content"), newEditingContent);
+      await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(newEditingContent)
+      });
     } catch (err) {
       console.error("Failed to save visibility toggle", err);
     }
@@ -234,7 +245,11 @@ export default function AdminDashboard() {
     }
     
     try {
-      await setDoc(doc(db, "settings", "content"), editingContent);
+      await fetch('/api/content', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(editingContent)
+      });
       alert("Content saved successfully to database!");
     } catch (err) {
       console.warn("Backend save failed.", err);
@@ -250,9 +265,7 @@ export default function AdminDashboard() {
 
     setUploadingVideo(true);
     try {
-      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
-      await uploadBytesResumable(fileRef, file);
-      const videoUrl = await getDownloadURL(fileRef);
+      const videoUrl = await proxyUpload(file, "content");
 
       const newPreShoot = { ...editingContent.preShoot };
       ["en", "si", "ta"].forEach(l => {
@@ -270,7 +283,11 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await setDoc(doc(db, "settings", "content"), newEditingContent);
+        await fetch('/api/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEditingContent)
+        });
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -290,9 +307,7 @@ export default function AdminDashboard() {
 
     setUploadingImage(true);
     try {
-      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
-      await uploadBytesResumable(fileRef, file);
-      const imageUrl = await getDownloadURL(fileRef);
+      const imageUrl = await proxyUpload(file, "content");
       
       const newPhoto = {
         id: Date.now().toString(),
@@ -312,7 +327,11 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await setDoc(doc(db, "settings", "content"), newEditingContent);
+        await fetch('/api/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEditingContent)
+        });
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -332,9 +351,7 @@ export default function AdminDashboard() {
 
     setUploadingHeroImage(true);
     try {
-      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
-      await uploadBytesResumable(fileRef, file);
-      const imageUrl = await getDownloadURL(fileRef);
+      const imageUrl = await proxyUpload(file, "content");
       
       const newHero = { ...editingContent.hero };
       ["en", "si", "ta"].forEach(l => {
@@ -352,7 +369,11 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await setDoc(doc(db, "settings", "content"), newEditingContent);
+        await fetch('/api/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEditingContent)
+        });
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -372,9 +393,7 @@ export default function AdminDashboard() {
 
     setUploadingAudio(true);
     try {
-      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
-      await uploadBytesResumable(fileRef, file);
-      const audioUrl = await getDownloadURL(fileRef);
+      const audioUrl = await proxyUpload(file, "content");
       
       const newHero = { ...editingContent.hero };
       ["en", "si", "ta"].forEach(l => {
@@ -392,7 +411,11 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await setDoc(doc(db, "settings", "content"), newEditingContent);
+        await fetch('/api/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEditingContent)
+        });
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -412,9 +435,7 @@ export default function AdminDashboard() {
 
     setUploadingCardImage(true);
     try {
-      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
-      await uploadBytesResumable(fileRef, file);
-      const imageUrl = await getDownloadURL(fileRef);
+      const imageUrl = await proxyUpload(file, "content");
       
       const newEditingContent = {
         ...editingContent,
@@ -425,7 +446,11 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await setDoc(doc(db, "settings", "content"), newEditingContent);
+        await fetch('/api/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEditingContent)
+        });
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -445,9 +470,7 @@ export default function AdminDashboard() {
 
     setUploadingFavicon(true);
     try {
-      const fileRef = ref(storage, `content/${Date.now()}-${file.name}`);
-      await uploadBytesResumable(fileRef, file);
-      const imageUrl = await getDownloadURL(fileRef);
+      const imageUrl = await proxyUpload(file, "content");
       
       const newEditingContent = {
         ...editingContent,
@@ -458,7 +481,11 @@ export default function AdminDashboard() {
       setContent(newEditingContent);
       
       try {
-        await setDoc(doc(db, "settings", "content"), newEditingContent);
+        await fetch('/api/content', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(newEditingContent)
+        });
       } catch (err) {
         console.error("Auto-save failed", err);
       }
@@ -493,6 +520,23 @@ export default function AdminDashboard() {
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
+  };
+
+  const handleBackup = async () => {
+    if (!window.confirm("Are you sure you want to backup the database to Firebase? This will overwrite the backup collections.")) return;
+    
+    try {
+      const res = await fetch('/api/backup', { method: 'POST' });
+      const data = await res.json();
+      if (data.success) {
+        alert("Backup to Firebase completed successfully!");
+      } else {
+        alert("Backup failed: " + data.error);
+      }
+    } catch (err) {
+      console.error("Backup failed", err);
+      alert("Failed to run backup.");
+    }
   };
 
   if (!isAuthenticated) {
@@ -532,9 +576,14 @@ export default function AdminDashboard() {
             <h1 className="text-4xl font-playfair text-gradient-gold mb-2">Guest List</h1>
             <p className="text-gray-400 font-light">Manage your RSVPs</p>
           </div>
-          <button onClick={exportToCSV} className="flex items-center justify-center gap-2 px-6 py-3 border border-primary text-primary bg-transparent hover:bg-dark-surface transition-all duration-300 rounded-lg font-semibold tracking-widest uppercase text-xs">
-            <Download className="w-4 h-4" /> Export CSV
-          </button>
+          <div className="flex gap-4">
+            <button onClick={handleBackup} className="flex items-center justify-center gap-2 px-6 py-3 border border-green-500 text-green-500 bg-transparent hover:bg-dark-surface transition-all duration-300 rounded-lg font-semibold tracking-widest uppercase text-xs">
+              <Upload className="w-4 h-4" /> Firebase Backup
+            </button>
+            <button onClick={exportToCSV} className="flex items-center justify-center gap-2 px-6 py-3 border border-primary text-primary bg-transparent hover:bg-dark-surface transition-all duration-300 rounded-lg font-semibold tracking-widest uppercase text-xs">
+              <Download className="w-4 h-4" /> Export CSV
+            </button>
+          </div>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -810,7 +859,7 @@ export default function AdminDashboard() {
                   onClick={async () => {
                     setContent(editingContent);
                     try {
-                      await axios.put('/api/content', editingContent);
+                      await setDoc(doc(db, "settings", "content"), editingContent);
                       alert("Countdown target saved successfully!");
                     } catch (err) {
                       console.error("Save failed", err);

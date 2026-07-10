@@ -1,21 +1,16 @@
 import type { NextConfig } from "next";
 import path from "path";
 
-const backendUrl = process.env.NEXT_PUBLIC_API_URL || 'https://vishmi-pruthuvi-wedding2027.onrender.com';
-
 const nextConfig: NextConfig = {
+  optimizeFonts: false,
   turbopack: {
     root: path.join(__dirname),
   },
   async rewrites() {
     return [
       {
-        source: '/api/:path*',
-        destination: `${backendUrl}/api/:path*`,
-      },
-      {
-        source: '/uploads/:path*',
-        destination: `${backendUrl}/uploads/:path*`,
+        source: '/__firebase_storage/:path*',
+        destination: 'https://firebasestorage.googleapis.com/v0/b/:path*',
       },
     ];
   },

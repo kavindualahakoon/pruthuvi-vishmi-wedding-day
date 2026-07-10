@@ -4,11 +4,7 @@ import { motion } from "framer-motion";
 import { useState, useEffect, useRef } from "react";
 import axios from "axios";
 import { X, ZoomIn, Upload, Image as ImageIcon, Lock, Check, Trash2, Download } from "lucide-react";
-import { db, storage } from "@/lib/firebase";
-import { collection, addDoc, getDocs, updateDoc, deleteDoc, doc, query, where, orderBy } from "firebase/firestore";
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from "firebase/storage";
 import { useContent } from "@/context/ContentContext";
-
 interface GuestPhoto {
   id: string;
   url: string;
@@ -33,18 +29,11 @@ export default function GuestPhotos() {
 
   const fetchPhotos = async () => {
     try {
-      const q = isAdmin 
-        ? query(collection(db, "guestPhotos"), orderBy("createdAt", "desc"))
-        : query(collection(db, "guestPhotos"), where("approved", "==", true), orderBy("createdAt", "desc"));
-      
-      const querySnapshot = await getDocs(q);
-      const fetchedPhotos: GuestPhoto[] = [];
-      querySnapshot.forEach((docSnap) => {
-        fetchedPhotos.push({ id: docSnap.id, ...docSnap.data() } as GuestPhoto);
-      });
-      setPhotos(fetchedPhotos);
-    } catch (err) {
-      console.error("Failed to fetch guest photos", err);
+      const res = await fetch('/api/photos');
+      const data = await res.json();
+      setPhotos(data);
+    } catch (error) {
+      console.error("Error fetching photos", error);
     }
   };
 
@@ -61,16 +50,30 @@ export default function GuestPhotos() {
 
     try {
       const uploadPromises = Array.from(files).map(async (file) => {
-        const fileRef = ref(storage, `guest-photos/${Date.now()}-${file.name}`);
-        const uploadTask = await uploadBytesResumable(fileRef, file);
-        const url = await getDownloadURL(fileRef);
+        // Enforce images only
+        if (!file.type.startsWith('image/')) {
+          throw new Error("Only photos are allowed.");
+        }
+
+        const formData = new FormData();
+        formData.append('file', file);
         
-        await addDoc(collection(db, "guestPhotos"), {
-          url,
-          originalName: file.name,
-          uploaderName: uploaderName || 'Anonymous',
-          approved: false,
-          createdAt: new Date().toISOString()
+        const uploadRes = await fetch('/api/upload', {
+          method: 'POST',
+          body: formData,
+        });
+        
+        if (!uploadRes.ok) throw new Error("Failed to upload file");
+        const { url: downloadUrl } = await uploadRes.json();
+        
+        await fetch('/api/photos', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: downloadUrl,
+            originalName: file.name,
+            uploaderName: uploaderName || 'Anonymous',
+          })
         });
       });
 
@@ -81,9 +84,9 @@ export default function GuestPhotos() {
       setTimeout(() => setUploadSuccess(false), 5000);
       
       if (isAdmin) fetchPhotos();
-    } catch (err) {
+    } catch (err: any) {
       console.error("Failed to upload photos", err);
-      alert("Failed to upload photos. Please try again.");
+      alert(`Failed to upload photos: ${err.message || err}. Please try again.`);
     } finally {
       setIsUploading(false);
     }
@@ -104,7 +107,11 @@ export default function GuestPhotos() {
   const handleApprovePhoto = async (id: string, e: React.MouseEvent) => {
     e.stopPropagation();
     try {
-      await updateDoc(doc(db, "guestPhotos", id), { approved: true });
+      await fetch(`/api/photos/${id}`, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ approved: true })
+      });
       setPhotos(photos.map(p => p.id === id ? { ...p, approved: true } : p));
     } catch (err) {
       console.error("Failed to approve photo", err);
@@ -115,13 +122,7 @@ export default function GuestPhotos() {
     e.stopPropagation();
     if (window.confirm("Are you sure you want to delete this photo?")) {
       try {
-        await deleteDoc(doc(db, "guestPhotos", id));
-        try {
-          const fileRef = ref(storage, url);
-          await deleteObject(fileRef);
-        } catch (storageErr) {
-          console.error("Failed to delete from storage", storageErr);
-        }
+        await fetch(`/api/photos/${id}`, { method: 'DELETE' });
         setPhotos(photos.filter(p => p.id !== id));
       } catch (err) {
         console.error("Failed to delete photo", err);
@@ -142,6 +143,8 @@ export default function GuestPhotos() {
   if (content?.visibility?.guestPhotos === false) {
     return null;
   }
+
+  const visiblePhotos = photos.filter(p => isAdmin || p.approved);
 
   return (
     <section className="pt-20 pb-10 md:pt-32 md:pb-16 bg-dark-bg text-foreground relative overflow-hidden" id="guest-photos">
@@ -200,9 +203,9 @@ export default function GuestPhotos() {
           </div>
         </motion.div>
 
-        {photos.length > 0 && (
+        {visiblePhotos.length > 0 && (
           <div className="columns-1 sm:columns-2 md:columns-3 lg:columns-4 gap-4 space-y-4">
-            {photos.map((photo) => (
+            {visiblePhotos.map((photo) => (
               <div
                 key={photo.id}
                 className="relative overflow-hidden rounded-xl group cursor-pointer break-inside-avoid shadow-lg border border-primary/10"
