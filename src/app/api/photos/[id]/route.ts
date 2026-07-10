@@ -9,22 +9,34 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const data = await request.json();
-    const photo = await prisma.photo.update({
-      where: { id },
-      data: { approved: data.approved }
-    });
+    let mysqlFailed = false;
+
+    try {
+      await prisma.photo.update({
+        where: { id },
+        data: { approved: data.approved }
+      });
+    } catch (dbError) {
+      console.error('MySQL photo update failed, continuing with Firebase fallback:', dbError);
+      mysqlFailed = true;
+    }
 
     // Sync update to Firebase Firestore guestPhotos collection
     try {
       if (db) {
         const docRef = doc(db, 'guestPhotos', id);
         await updateDoc(docRef, { approved: data.approved });
+      } else if (mysqlFailed) {
+        throw new Error('Firebase is not configured and MySQL is offline');
       }
-    } catch (firebaseError) {
+    } catch (firebaseError: any) {
       console.error('Failed to update photo in Firebase:', firebaseError);
+      if (mysqlFailed) {
+        return NextResponse.json({ error: firebaseError.message }, { status: 500 });
+      }
     }
 
-    return NextResponse.json(photo);
+    return NextResponse.json({ id, approved: data.approved });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
@@ -33,18 +45,30 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
-    await prisma.photo.delete({
-      where: { id }
-    });
+    let mysqlFailed = false;
+
+    try {
+      await prisma.photo.delete({
+        where: { id }
+      });
+    } catch (dbError) {
+      console.error('MySQL photo delete failed, continuing with Firebase fallback:', dbError);
+      mysqlFailed = true;
+    }
 
     // Sync deletion to Firebase Firestore guestPhotos collection
     try {
       if (db) {
         const docRef = doc(db, 'guestPhotos', id);
         await deleteDoc(docRef);
+      } else if (mysqlFailed) {
+        throw new Error('Firebase is not configured and MySQL is offline');
       }
-    } catch (firebaseError) {
+    } catch (firebaseError: any) {
       console.error('Failed to delete photo from Firebase:', firebaseError);
+      if (mysqlFailed) {
+        return NextResponse.json({ error: firebaseError.message }, { status: 500 });
+      }
     }
 
     return NextResponse.json({ success: true });
