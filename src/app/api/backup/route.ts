@@ -12,7 +12,7 @@ export async function POST(request: Request) {
 
     // 2. Upload RSVPs to Firebase
     for (const rsvp of rsvps) {
-      const docRef = doc(db, 'rsvps_backup', rsvp.id);
+      const docRef = doc(db, 'rsvps', rsvp.id);
       await setDoc(docRef, {
         name: rsvp.name,
         email: rsvp.email,
@@ -26,7 +26,7 @@ export async function POST(request: Request) {
 
     // 3. Upload Photos to Firebase
     for (const photo of photos) {
-      const docRef = doc(db, 'photos_backup', photo.id);
+      const docRef = doc(db, 'guestPhotos', photo.id);
       await setDoc(docRef, {
         url: photo.url,
         uploaderName: photo.uploaderName,
@@ -38,7 +38,7 @@ export async function POST(request: Request) {
 
     // 4. Upload Content to Firebase
     if (contentRecord) {
-      const docRef = doc(db, 'settings_backup', 'content');
+      const docRef = doc(db, 'settings', 'content');
       let dataObj = {};
       try {
         dataObj = JSON.parse(contentRecord.data);

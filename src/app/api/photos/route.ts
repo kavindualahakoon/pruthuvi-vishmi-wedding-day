@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { db } from '@/lib/firebase-backup';
+import { doc, setDoc } from 'firebase/firestore';
 
 export async function GET() {
   try {
@@ -22,8 +24,24 @@ export async function POST(request: Request) {
         uploaderName: data.uploaderName,
       }
     });
+
+    // Sync to Firebase Firestore guestPhotos collection
+    try {
+      const docRef = doc(db, 'guestPhotos', photo.id);
+      await setDoc(docRef, {
+        url: photo.url,
+        uploaderName: photo.uploaderName,
+        originalName: photo.originalName || null,
+        approved: photo.approved,
+        createdAt: photo.createdAt.toISOString(),
+      });
+    } catch (firebaseError) {
+      console.error('Failed to sync photo to Firebase:', firebaseError);
+    }
+
     return NextResponse.json(photo);
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
