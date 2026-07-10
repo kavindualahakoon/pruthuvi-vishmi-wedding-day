@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { db } from '@/lib/firebase-backup';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 
+export const dynamic = 'force-dynamic';
+
 export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
     const { id } = await params;
@@ -14,8 +16,10 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
 
     // Sync update to Firebase Firestore guestPhotos collection
     try {
-      const docRef = doc(db, 'guestPhotos', id);
-      await updateDoc(docRef, { approved: data.approved });
+      if (db) {
+        const docRef = doc(db, 'guestPhotos', id);
+        await updateDoc(docRef, { approved: data.approved });
+      }
     } catch (firebaseError) {
       console.error('Failed to update photo in Firebase:', firebaseError);
     }
@@ -35,8 +39,10 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
 
     // Sync deletion to Firebase Firestore guestPhotos collection
     try {
-      const docRef = doc(db, 'guestPhotos', id);
-      await deleteDoc(docRef);
+      if (db) {
+        const docRef = doc(db, 'guestPhotos', id);
+        await deleteDoc(docRef);
+      }
     } catch (firebaseError) {
       console.error('Failed to delete photo from Firebase:', firebaseError);
     }

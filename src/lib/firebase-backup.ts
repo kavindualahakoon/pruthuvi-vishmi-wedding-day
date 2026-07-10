@@ -10,7 +10,15 @@ const firebaseConfig = {
   appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
 };
 
-const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
-const db = getFirestore(app);
+let db: any = null;
+
+if (firebaseConfig.apiKey) {
+  try {
+    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApps()[0];
+    db = getFirestore(app);
+  } catch (err) {
+    console.error("Firebase initialization failed:", err);
+  }
+}
 
 export { db };

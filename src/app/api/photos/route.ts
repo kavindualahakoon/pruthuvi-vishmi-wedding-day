@@ -3,6 +3,8 @@ import { prisma } from '@/lib/prisma';
 import { db } from '@/lib/firebase-backup';
 import { doc, setDoc } from 'firebase/firestore';
 
+export const dynamic = 'force-dynamic';
+
 export async function GET() {
   try {
     const photos = await prisma.photo.findMany({
@@ -27,14 +29,18 @@ export async function POST(request: Request) {
 
     // Sync to Firebase Firestore guestPhotos collection
     try {
-      const docRef = doc(db, 'guestPhotos', photo.id);
-      await setDoc(docRef, {
-        url: photo.url,
-        uploaderName: photo.uploaderName,
-        originalName: photo.originalName || null,
-        approved: photo.approved,
-        createdAt: photo.createdAt.toISOString(),
-      });
+      if (db) {
+        const docRef = doc(db, 'guestPhotos', photo.id);
+        await setDoc(docRef, {
+          url: photo.url,
+          uploaderName: photo.uploaderName,
+          originalName: photo.originalName || null,
+          approved: photo.approved,
+          createdAt: photo.createdAt.toISOString(),
+        });
+      } else {
+        console.warn('Firebase is not configured. Skipping Firestore sync.');
+      }
     } catch (firebaseError) {
       console.error('Failed to sync photo to Firebase:', firebaseError);
     }
