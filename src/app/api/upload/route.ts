@@ -15,7 +15,8 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    const buffer = Buffer.from(await file.arrayBuffer());
+    const arrayBuffer = await file.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
     
     const uniqueSuffix = `${Date.now()}-${Math.round(Math.random() * 1E9)}`;
     const originalName = file.name;
@@ -29,7 +30,7 @@ export async function POST(request: Request) {
       // Upload to Firebase Storage server-side (bypasses Vercel disk EROFS limitation)
       try {
         const fileRef = ref(storage, `uploads/${fileName}`);
-        await uploadBytes(fileRef, buffer, {
+        await uploadBytes(fileRef, arrayBuffer, {
           contentType: file.type || 'image/jpeg'
         });
         const downloadUrl = await getDownloadURL(fileRef);
