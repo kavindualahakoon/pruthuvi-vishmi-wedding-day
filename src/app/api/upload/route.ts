@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { promises as fs } from 'fs';
 import path from 'path';
+import { storage } from '@/lib/firebase-backup';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 export const dynamic = 'force-dynamic';
 
@@ -23,6 +25,21 @@ export async function POST(request: Request) {
     const safeBaseName = path.basename(originalName, extension).replace(/[^a-zA-Z0-9]/g, '_');
     const fileName = `${safeBaseName}-${uniqueSuffix}${extension}`;
     
+    if (storage) {
+      // Upload to Firebase Storage server-side (bypasses Vercel disk EROFS limitation)
+      try {
+        const fileRef = ref(storage, `uploads/${fileName}`);
+        await uploadBytes(fileRef, buffer, {
+          contentType: file.type || 'image/jpeg'
+        });
+        const downloadUrl = await getDownloadURL(fileRef);
+        return NextResponse.json({ url: downloadUrl });
+      } catch (uploadError: any) {
+        console.error('Firebase server-side upload failed, attempting local disk fallback:', uploadError);
+      }
+    }
+
+    // Fallback to local storage (e.g. for local development or if Firebase fails)
     const uploadDir = path.join(process.cwd(), 'public', 'uploads');
     
     try {
