@@ -310,9 +310,9 @@ export default function AdminDashboard() {
       }
 
       alert("Video uploaded successfully!");
-    } catch (err) {
+    } catch (err: any) {
       console.error("Upload failed", err);
-      alert("Failed to upload video");
+      alert(`Failed to upload video: ${err.message || err}`);
     } finally {
       setUploadingVideo(false);
     }
