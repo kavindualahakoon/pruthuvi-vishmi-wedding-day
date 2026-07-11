@@ -11,21 +11,37 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const data = await request.json();
     let mysqlFailed = false;
 
+    // Build update payload for MySQL
+    const mysqlUpdate: any = {};
+    if (data.name !== undefined) mysqlUpdate.name = data.name;
+    if (data.guestCount !== undefined) mysqlUpdate.guests = data.guestCount;
+    if (data.foodPreference !== undefined) mysqlUpdate.dietary = data.foodPreference;
+    if (data.specialNotes !== undefined) mysqlUpdate.message = data.specialNotes;
+    if (data.approved !== undefined) mysqlUpdate.approved = data.approved;
+
     try {
       await prisma.rsvp.update({
         where: { id },
-        data: { approved: data.approved }
+        data: mysqlUpdate
       });
     } catch (dbError) {
       console.error('MySQL RSVP update failed, continuing with Firebase fallback:', dbError);
       mysqlFailed = true;
     }
 
+    // Build update payload for Firestore
+    const firestoreUpdate: any = {};
+    if (data.name !== undefined) firestoreUpdate.name = data.name;
+    if (data.guestCount !== undefined) firestoreUpdate.guests = data.guestCount;
+    if (data.foodPreference !== undefined) firestoreUpdate.dietary = data.foodPreference;
+    if (data.specialNotes !== undefined) firestoreUpdate.message = data.specialNotes;
+    if (data.approved !== undefined) firestoreUpdate.approved = data.approved;
+
     // Auto backup update to Firebase Firestore
     try {
       if (db) {
         const docRef = doc(db, 'rsvps', id);
-        await updateDoc(docRef, { approved: data.approved });
+        await updateDoc(docRef, firestoreUpdate);
       } else if (mysqlFailed) {
         throw new Error('Firebase is not configured and MySQL is offline');
       }
@@ -36,7 +52,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
       }
     }
 
-    return NextResponse.json({ id, approved: data.approved });
+    return NextResponse.json({ id, ...data });
   } catch (error: any) {
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
