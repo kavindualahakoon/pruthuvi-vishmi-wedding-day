@@ -968,6 +968,20 @@ export default function AdminDashboard() {
                 )}
               </div>
             </div>
+            <div className="pt-2">
+              <label className="block text-xs uppercase text-gray-400 mb-1">Or Paste Video Link (YouTube, Google Drive, direct MP4 link, etc.)</label>
+              <input 
+                type="text" 
+                placeholder="e.g. https://example.com/myvideo.mp4" 
+                value={editingContent.preShoot[editingLang].videoUrl || ''} 
+                onChange={(e) => {
+                  const newPreShoot = { ...editingContent.preShoot };
+                  newPreShoot[editingLang] = { ...newPreShoot[editingLang], videoUrl: e.target.value };
+                  setEditingContent({ ...editingContent, preShoot: newPreShoot });
+                }} 
+                className="w-full bg-dark-bg border border-primary/30 rounded-lg p-3 focus:border-primary focus:outline-none" 
+              />
+            </div>
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4 pt-4">
               <div>
                 <label className="block text-xs uppercase text-gray-400 mb-1">Section Title</label>
