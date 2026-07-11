@@ -134,7 +134,17 @@ export default function AdminDashboard() {
       if (!res.ok) throw new Error(`HTTP error! status: ${res.status}`);
       const rsvps = await res.json();
       if (Array.isArray(rsvps)) {
-        setGuests(rsvps);
+        const mappedGuests = rsvps.map((r: any) => ({
+          id: r.id,
+          name: r.name,
+          email: r.email,
+          phone: r.phone || '',
+          guestCount: typeof r.guestCount === 'number' ? r.guestCount : (typeof r.guests === 'number' ? r.guests : (Number(r.guests) || 1)),
+          foodPreference: r.foodPreference || r.dietary || 'Non-Vegetarian',
+          specialNotes: r.specialNotes || r.message || '',
+          createdAt: r.createdAt
+        }));
+        setGuests(mappedGuests);
       } else {
         console.error("Fetched RSVPs is not an array:", rsvps);
         setGuests([]);

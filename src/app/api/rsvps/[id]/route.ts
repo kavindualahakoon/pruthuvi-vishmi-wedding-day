@@ -11,10 +11,35 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     const data = await request.json();
     let mysqlFailed = false;
 
+    const updateData: any = {};
+    if (data.approved !== undefined) updateData.approved = data.approved;
+    if (data.name !== undefined) updateData.name = data.name;
+    if (data.email !== undefined) updateData.email = data.email;
+    if (data.attending !== undefined) updateData.attending = data.attending;
+    
+    // Support both DB schema and UI format
+    if (data.guests !== undefined) {
+      updateData.guests = data.guests;
+    } else if (data.guestCount !== undefined) {
+      updateData.guests = data.guestCount;
+    }
+    
+    if (data.dietary !== undefined) {
+      updateData.dietary = data.dietary;
+    } else if (data.foodPreference !== undefined) {
+      updateData.dietary = data.foodPreference;
+    }
+    
+    if (data.message !== undefined) {
+      updateData.message = data.message;
+    } else if (data.specialNotes !== undefined) {
+      updateData.message = data.specialNotes;
+    }
+
     try {
       await prisma.rsvp.update({
         where: { id },
-        data: { approved: data.approved }
+        data: updateData
       });
     } catch (dbError) {
       console.error('MySQL RSVP update failed, continuing with Firebase fallback:', dbError);
@@ -25,7 +50,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
     try {
       if (db) {
         const docRef = doc(db, 'rsvps', id);
-        await updateDoc(docRef, { approved: data.approved });
+        await updateDoc(docRef, updateData);
       } else if (mysqlFailed) {
         throw new Error('Firebase is not configured and MySQL is offline');
       }
