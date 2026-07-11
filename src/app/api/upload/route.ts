@@ -36,7 +36,8 @@ export async function POST(request: Request) {
         const downloadUrl = await getDownloadURL(fileRef);
         return NextResponse.json({ url: downloadUrl });
       } catch (uploadError: any) {
-        console.error('Firebase server-side upload failed, attempting local disk fallback:', uploadError);
+        console.error('Firebase server-side upload failed:', uploadError);
+        return NextResponse.json({ error: `Firebase Storage upload failed: ${uploadError.message}` }, { status: 500 });
       }
     }
 
