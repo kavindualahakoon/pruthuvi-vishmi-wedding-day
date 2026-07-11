@@ -10,18 +10,7 @@ export async function GET() {
     const rsvps = await prisma.rsvp.findMany({
       orderBy: { createdAt: 'desc' }
     });
-    const mapped = rsvps.map((r: any) => ({
-      id: r.id,
-      name: r.name,
-      email: r.email,
-      phone: r.phone || '',
-      guestCount: r.guests !== undefined ? r.guests : 1,
-      foodPreference: r.dietary || 'Non-Vegetarian',
-      specialNotes: r.message || '',
-      approved: r.approved || false,
-      createdAt: r.createdAt
-    }));
-    return NextResponse.json(mapped);
+    return NextResponse.json(rsvps);
   } catch (dbError: any) {
     console.error('MySQL query failed, falling back to Firebase Firestore:', dbError);
     if (db) {
@@ -30,18 +19,7 @@ export async function GET() {
         const querySnapshot = await getDocs(q);
         const rsvps: any[] = [];
         querySnapshot.forEach((docSnap) => {
-          const r = docSnap.data();
-          rsvps.push({
-            id: docSnap.id,
-            name: r.name,
-            email: r.email,
-            phone: r.phone || '',
-            guestCount: r.guests !== undefined ? r.guests : 1,
-            foodPreference: r.dietary || 'Non-Vegetarian',
-            specialNotes: r.message || '',
-            approved: r.approved || false,
-            createdAt: r.createdAt
-          });
+          rsvps.push({ id: docSnap.id, ...docSnap.data() });
         });
         return NextResponse.json(rsvps);
       } catch (firebaseError: any) {
