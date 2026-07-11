@@ -26,6 +26,7 @@ model rsvp {
   id        String   @id @default(cuid())
   name      String
   email     String
+  phone     String   @default("")
   attending Boolean
   guests    Int      @default(1)
   dietary   String?

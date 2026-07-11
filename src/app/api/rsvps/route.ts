@@ -42,6 +42,7 @@ export async function POST(request: Request) {
         data: {
           name: data.name,
           email: data.email,
+          phone: data.phone || '',
           attending: data.attending,
           guests: data.guests,
           dietary: data.dietary,
@@ -56,6 +57,7 @@ export async function POST(request: Request) {
         id: `fb-${Date.now()}-${Math.round(Math.random() * 1e9)}`,
         name: data.name,
         email: data.email,
+        phone: data.phone || '',
         attending: data.attending,
         guests: data.guests,
         dietary: data.dietary || null,
@@ -72,6 +74,7 @@ export async function POST(request: Request) {
         await setDoc(docRef, {
           name: rsvp.name,
           email: rsvp.email,
+          phone: rsvp.phone || '',
           attending: rsvp.attending,
           guests: rsvp.guests,
           dietary: rsvp.dietary || null,
